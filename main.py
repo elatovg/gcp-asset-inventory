@@ -48,7 +48,6 @@ def get_iam_policies(svc_account,org_id):
         sa_permissions["organization"] = policy.organization
         # print(sa_permissions)
         # print(policy)
-        # print(json.dumps(MessageToDict(policy.policy)))
 
     return sa_permissions
 if __name__ == "__main__":
@@ -71,4 +70,3 @@ if __name__ == "__main__":
     else:
         print("List of Service Accounts is 0, confirm your permissions")
         exit(0)
-    # get_sas(GCP_ORG_ID)
