@@ -1,0 +1,1 @@
+# gcp-asset-inventory
