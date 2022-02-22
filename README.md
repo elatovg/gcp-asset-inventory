@@ -167,4 +167,4 @@ And lastly you can also confirm the contents of the file:
   "asset_type": "cloudresourcemanager.googleapis.com/Project",
   "organization": "organizations/278XXXX"
 }%
-```s
+```
