@@ -10,6 +10,7 @@ from google.cloud import asset_v1
 from google.cloud import storage
 from google.protobuf.json_format import MessageToDict
 
+
 def get_sas(org_id):
     """
     Get a list of Service Account and return them as a list
@@ -17,12 +18,10 @@ def get_sas(org_id):
     scope = f"organizations/{org_id}"
     asset_types = ['iam.googleapis.com/ServiceAccount']
     client = asset_v1.AssetServiceClient()
-    response = client.search_all_resources(
-        request = {
-            "scope": scope,
-            "asset_types": asset_types
-        }
-    )
+    response = client.search_all_resources(request={
+        "scope": scope,
+        "asset_types": asset_types
+    })
     gcp_sas_list = []
     for resource in response:
         # print(resource.name.split('/')[-1])
@@ -30,7 +29,8 @@ def get_sas(org_id):
 
     return gcp_sas_list
 
-def get_iam_policies(svc_account,org_id):
+
+def get_iam_policies(svc_account, org_id):
     """
     Given a service account get all the IAM policies attached to
     that service account
@@ -38,9 +38,10 @@ def get_iam_policies(svc_account,org_id):
     scope = f"organizations/{org_id}"
     query = f"policy:{svc_account}"
     client = asset_v1.AssetServiceClient()
-    response = client.search_all_iam_policies(
-        request={"scope": scope, "query": query}
-    )
+    response = client.search_all_iam_policies(request={
+        "scope": scope,
+        "query": query
+    })
     sa_permissions = {}
     for policy in response:
         sa_permissions["resource"] = policy.resource
@@ -53,6 +54,7 @@ def get_iam_policies(svc_account,org_id):
 
     return sa_permissions
 
+
 def upload_results_gcp_bucket(gcp_bucket, dest_filename, file_contents):
     """Uploads a file to the bucket."""
     storage_client = storage.Client()
@@ -61,9 +63,12 @@ def upload_results_gcp_bucket(gcp_bucket, dest_filename, file_contents):
 
     blob.upload_from_string(file_contents)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-g','--gcs_bucket', help='upload results to gcs bucket')
+    parser.add_argument('-g',
+                        '--gcs_bucket',
+                        help='upload results to gcs bucket')
     args = parser.parse_args()
     if os.getenv("GCP_ORG_ID"):
         GCP_ORG_ID = os.getenv("GCP_ORG_ID")
@@ -73,7 +78,7 @@ if __name__ == "__main__":
     gcp_sas = get_sas(GCP_ORG_ID)
     if len(gcp_sas) > 0:
         for sa in gcp_sas[:10]:
-            sa_policy = get_iam_policies(sa,GCP_ORG_ID)
+            sa_policy = get_iam_policies(sa, GCP_ORG_ID)
             if sa_policy:
                 filename = f"{sa.split('@')[0]}.json"
                 json_string = json.dumps(sa_policy, indent=2)
