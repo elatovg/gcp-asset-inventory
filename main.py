@@ -5,7 +5,9 @@ with GCP asset inventory
 """
 import os
 import json
+import argparse
 from google.cloud import asset_v1
+from google.cloud import storage
 from google.protobuf.json_format import MessageToDict
 
 def get_sas(org_id):
@@ -50,7 +52,19 @@ def get_iam_policies(svc_account,org_id):
         # print(policy)
 
     return sa_permissions
+
+def upload_results_gcp_bucket(gcp_bucket, dest_filename, file_contents):
+    """Uploads a file to the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(gcp_bucket)
+    blob = bucket.blob(dest_filename)
+
+    blob.upload_from_string(file_contents)
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-g','--gcs_bucket', help='upload results to gcs bucket')
+    args = parser.parse_args()
     if os.getenv("GCP_ORG_ID"):
         GCP_ORG_ID = os.getenv("GCP_ORG_ID")
     else:
@@ -62,10 +76,15 @@ if __name__ == "__main__":
             sa_policy = get_iam_policies(sa,GCP_ORG_ID)
             if sa_policy:
                 filename = f"{sa.split('@')[0]}.json"
-                with open(filename, "w") as wfh:
-                    json_string = json.dumps(sa_policy, indent=2)
-                    wfh.write(json_string)
-                print(f"created {filename}")
+                json_string = json.dumps(sa_policy, indent=2)
+                if args.gcs_bucket:
+                    GCS_BUCKET = args.gcs_bucket
+                    upload_results_gcp_bucket(GCS_BUCKET, filename, json_string)
+                    print(f"uploaded file {filename} to {GCS_BUCKET}")
+                else:
+                    with open(filename, "w") as wfh:
+                        wfh.write(json_string)
+                    print(f"created {filename}")
 
     else:
         print("List of Service Accounts is 0, confirm your permissions")
