@@ -1,0 +1,106 @@
+[
+  {
+    "assetType": "cloudresourcemanager.googleapis.com/Project",
+    "folders": [
+      "folders/FOLDER_ID"
+    ],
+    "organization": "organizations/ORG_ID",
+    "policy": {
+      "bindings": [
+        {
+          "members": [
+            "serviceAccount:service-PROJECT_NUM@compute-system.iam.gserviceaccount.com"
+          ],
+          "role": "roles/compute.serviceAgent"
+        },
+        {
+          "members": [
+            "serviceAccount:PROJECT_NUM-compute@developer.gserviceaccount.com",
+            "serviceAccount:PROJECT_NUM@cloudservices.gserviceaccount.com"
+          ],
+          "role": "roles/editor"
+        },
+        {
+          "members": [
+            "serviceAccount:ci-account@PROJECT_ID.iam.gserviceaccount.com",
+            "serviceAccount:tf-testing@PROJECT_ID.iam.gserviceaccount.com"
+          ],
+          "role": "roles/owner"
+        }
+      ]
+    },
+    "project": "projects/PROJECT_NUM",
+    "resource": "//cloudresourcemanager.googleapis.com/projects/PROJECT_ID"
+  },
+    {
+    "assetType": "cloudresourcemanager.googleapis.com/Folder",
+    "folders": [
+      "folders/FOLDER_ID"
+    ],
+    "organization": "organizations/ORG_ID",
+    "policy": {
+      "bindings": [
+        {
+          "members": [
+            "user:user1@DOMAIN_NAME"
+          ],
+          "role": "roles/resourcemanager.folderAdmin"
+        },
+        {
+          "members": [
+            "user:user1@DOMAIN_NAME"
+          ],
+          "role": "roles/resourcemanager.folderEditor"
+        },
+        {
+          "members": [
+            "deleted:serviceAccount:tf-testing@PROJECT_ID.iam.gserviceaccount.com?uid=SA_ID",
+            "serviceAccount:tf-testing@PROJECT_ID.iam.gserviceaccount.com"
+          ],
+          "role": "roles/resourcemanager.projectCreator"
+        }
+      ]
+    },
+    "resource": "//cloudresourcemanager.googleapis.com/folders/FOLDER_ID"
+  },
+  {
+    "assetType": "pubsub.googleapis.com/Topic",
+    "folders": [
+      "folders/FOLDER_ID",
+      "folders/FOLDER_ID"
+    ],
+    "organization": "organizations/ORG_ID",
+    "policy": {
+      "bindings": [
+        {
+          "members": [
+            "serviceAccount:service-PROJECT_NUM@gcp-sa-pubsub.iam.gserviceaccount.com"
+          ],
+          "role": "roles/pubsub.publisher"
+        }
+      ]
+    },
+    "project": "projects/PROJECT_NUM",
+    "resource": "//pubsub.googleapis.com/projects/PROJECT_ID/topics/my-topic"
+  },
+  {
+    "assetType": "iam.googleapis.com/ServiceAccount",
+    "folders": [
+      "folders/FOLDER_ID",
+      "folders/FOLDER_ID"
+    ],
+    "organization": "organizations/ORG_ID",
+    "policy": {
+      "bindings": [
+        {
+          "members": [
+            "user:user2@DOMAIN_NAME"
+          ],
+          "role": "roles/iam.serviceAccountTokenCreator"
+        }
+      ]
+    },
+    "project": "projects/PROJECT_NUM",
+    "resource": "//iam.googleapis.com/projects/PROJECT_ID/serviceAccounts/user2-sa@PROJECT_ID.iam.gserviceaccount.com"
+  }
+]
