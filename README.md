@@ -176,13 +176,13 @@ And lastly you can also confirm the contents of the file:
 ```
 
 ### Reading output from a JSON File
-Another approach you can take is generate the asset inventory output with `gcloud asset` CLI and then pass that file as input to this script by using the `-r` flag. First generate the json file:
+Another approach you can take is generate the asset inventory output with `gcloud asset` CLI as JSONand then pass that JSON file as input to this script by using the `-r` flag. First generate the JSON file:
 
 ```bash
 gcloud asset search-all-iam-policies --scope=organizations/${GCP_ORG_ID} --format json > all-iam-policies.json
 ```
 
-Then pass that to the script:
+Then pass that to the script to generate a CSV file:
 
 ```bash
 > python3 main.py -r all-iam-policies.json
