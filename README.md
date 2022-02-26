@@ -149,7 +149,7 @@ gs://my-bucket/test-sa.json
 
 And lastly you can also confirm the contents of the file:
 
-````bash
+```bash
 > gsutil cat gs://my-bucket/test-sa.json
 {
   "resource": "//cloudresourcemanager.googleapis.com/projects/hns-spoke",
@@ -167,4 +167,18 @@ And lastly you can also confirm the contents of the file:
   "asset_type": "cloudresourcemanager.googleapis.com/Project",
   "organization": "organizations/278XXXX"
 }%
+```
+
+### Reading output from a JSON File
+Another approach you can take is generate the asset inventory output with `gcloud asset` CLI and then pass that file as input to this script by using the `-r` flag. First generate the json file:
+
+```bash
+gcloud asset search-all-iam-policies --scope=organizations/${GCP_ORG_ID} --format json > all-iam-policies.json
+```
+
+Then pass that to the script:
+
+```bash
+> python3 main.py -r all-iam-policies.json
+Wrote results to all-iam-policies.csv
 ```
