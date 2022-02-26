@@ -21,7 +21,7 @@ Confirm it's set:
 2785XXXXXX
 ```
 
-### Service Account and GCP Roles
+### Service Account, GCP Roles, and API
 Let's create a dedicated service account the script will be executed as:
 
 ```bash
@@ -60,6 +60,12 @@ Else if you are allowed to impersonate the account you can run the following wit
 > gcloud asset search-all-resources --scope=organizations/278534702455 --asset-types="iam.googleapis.com/ServiceAccount" --limit 1 --impersonate-service-account ${SA_EMAIL}
 
 WARNING: This command is using service account impersonation. All API calls will be executed as [asset-viewer@<PROJECT_ID>o.iam.gserviceaccount.com].
+```
+
+And lastly enable the **cloud asset** API:
+
+```bash
+> gcloud services enable cloudasset.googleapis.com
 ```
 
 ### Create a Storage Bucket (Optional)
