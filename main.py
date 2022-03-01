@@ -5,6 +5,7 @@ with GCP asset inventory
 """
 import os
 import json
+import codecs
 import csv
 import argparse
 from google.cloud import asset_v1
@@ -71,8 +72,35 @@ def parse_json(filename):
     organize by service accounts
     """
     output_dict = {}
-    json_file_handler = open(filename)
-    json_contents = json.load(json_file_handler)
+
+    # Check if file is utf-8 encoded
+    try:
+        codecs.open(filename, encoding="utf-8", errors="strict").readline()
+        utf_8 = True
+        utf_16 = False
+    except UnicodeDecodeError:
+        utf_8 = False
+
+    if not utf_8:
+        # Check if file is utf-16-le encoded
+        try:
+            codecs.open(filename, encoding="utf-16-le",
+                        errors="strict").readline()
+            utf_16 = True
+        except UnicodeDecodeError:
+            utf_16 = False
+
+    if utf_16:
+        with open(filename, 'r', encoding='utf-16-le') as json_file_handler:
+            data = json_file_handler.read()
+            json_contents = json.loads(data.encode().decode('utf-8-sig'))
+    elif utf_8:
+        with open(filename, 'r') as json_file_handler:
+            data = json_file_handler.read()
+            json_contents = json.loads(data)
+    else:
+        print("Unable to determine file encoding, it's not utf-8 or utf-16-le")
+        exit(0)
     for iam_policy in json_contents:
         if iam_policy['policy']['bindings']:
             for binding in iam_policy['policy']['bindings']:
@@ -128,20 +156,21 @@ if __name__ == "__main__":
                         '--gcs_bucket',
                         help='upload results to gcs bucket')
     parser.add_argument('-r',
-                    '--read_file',
-                    help='read json input from gcloud asset CLI output')
+                        '--read_file',
+                        help='read json input from gcloud asset CLI output')
     args = parser.parse_args()
     if args.read_file:
         JSON_FILENAME = args.read_file
         sa_dictionary = parse_json(JSON_FILENAME)
-        CSV_FILENAME = JSON_FILENAME.replace('json','csv')
-        write_dictionary_to_csv(sa_dictionary,CSV_FILENAME)
+        CSV_FILENAME = JSON_FILENAME.replace('json', 'csv')
+        write_dictionary_to_csv(sa_dictionary, CSV_FILENAME)
         print(f"Wrote results to {CSV_FILENAME}")
     else:
         if os.getenv("GCP_ORG_ID"):
             GCP_ORG_ID = os.getenv("GCP_ORG_ID")
         else:
-            print("Pass in GCP ORG ID by setting an env var called 'GCP_ORG_ID'")
+            print(
+                "Pass in GCP ORG ID by setting an env var called 'GCP_ORG_ID'")
             exit(0)
         gcp_sas = get_sas(GCP_ORG_ID)
         if len(gcp_sas) > 0:
@@ -152,7 +181,8 @@ if __name__ == "__main__":
                     json_string = json.dumps(sa_policy, indent=2)
                     if args.gcs_bucket:
                         GCS_BUCKET = args.gcs_bucket
-                        upload_results_gcp_bucket(GCS_BUCKET, sa_filename, json_string)
+                        upload_results_gcp_bucket(GCS_BUCKET, sa_filename,
+                                                  json_string)
                         print(f"uploaded file {sa_filename} to {GCS_BUCKET}")
                     else:
                         with open(sa_filename, "w") as wfh:
