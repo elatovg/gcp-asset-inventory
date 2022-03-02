@@ -111,7 +111,7 @@ def parse_json(filename):
                         sa_deleted = False
                     else:
                         sa_deleted,sa_type,sa_name = member.split(':')
-                    if sa_type == "serviceAccount" and not sa_deleted:
+                    if sa_type != "group" and not sa_deleted:
                         f_name = sa_name.split('@')[0]
                         l_name = sa_name.split('@')[0]
                         uid = sa_name
