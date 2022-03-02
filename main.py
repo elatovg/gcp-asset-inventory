@@ -73,8 +73,8 @@ def parse_json(filename):
     """
     output_dict = {}
 
-    # Check if file is utf-8 encoded
     try:
+        # Check if file is utf-8 encoded
         codecs.open(filename, encoding="utf-8", errors="strict").readline()
         utf_8 = True
         utf_16 = False
@@ -82,8 +82,8 @@ def parse_json(filename):
         utf_8 = False
 
     if not utf_8:
-        # Check if file is utf-16-le encoded
         try:
+            # Check if file is utf-16-le encoded
             codecs.open(filename, encoding="utf-16-le",
                         errors="strict").readline()
             utf_16 = True
@@ -105,28 +105,35 @@ def parse_json(filename):
         if iam_policy['policy']['bindings']:
             for binding in iam_policy['policy']['bindings']:
                 for member in binding['members']:
-                    f_name = member.split('@')[0]
-                    l_name = member.split('@')[0]
-                    uid = member
-                    email = member
-                    rsc_type = iam_policy['assetType'].split('/')[-1]
-                    rsc_name = iam_policy['resource'].split('/')[-1]
-                    rsc = f"{rsc_type} ({rsc_name})"
-
-                    if member in output_dict:
-                        output_dict[member]['Entitlement'].append(
-                            f"{binding['role']} -> {rsc}")
+                    colon_counter = member.count(':')
+                    if colon_counter == 1:
+                        sa_type,sa_name = member.split(':')
+                        sa_deleted = False
                     else:
-                        output_dict[member] = {
-                            "First_Name": f_name,
-                            "Last_Name": l_name,
-                            "UniqueID": uid,
-                            "Email": email,
-                            "Entitlement": [f"{binding['role']} -> {rsc}"]
-                        }
-                    # print(
-                    #     f"{member} -> {binding['role']} -> {iam_policy['assetType']}"
-                    # )
+                        sa_deleted,sa_type,sa_name = member.split(':')
+                    if sa_type == "serviceAccount" and not sa_deleted:
+                        f_name = sa_name.split('@')[0]
+                        l_name = sa_name.split('@')[0]
+                        uid = sa_name
+                        email = sa_name
+                        rsc_type = iam_policy['assetType'].split('/')[-1]
+                        rsc_name = iam_policy['resource'].split('/')[-1]
+                        rsc = f"{rsc_type} ({rsc_name})"
+
+                        if email in output_dict:
+                            output_dict[email]['Entitlement'].append(
+                                f"{binding['role']} -> {rsc}")
+                        else:
+                            output_dict[member] = {
+                                "First_Name": f_name,
+                                "Last_Name": l_name,
+                                "UniqueID": uid,
+                                "Email": email,
+                                "Entitlement": [f"{binding['role']} -> {rsc}"]
+                            }
+                        # print(
+                        #     f"{member} -> {binding['role']} -> {iam_policy['assetType']}"
+                        # )
 
     return output_dict
 
