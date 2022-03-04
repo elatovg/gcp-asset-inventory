@@ -101,17 +101,22 @@ def parse_json(filename):
     else:
         print("Unable to determine file encoding, it's not utf-8 or utf-16-le")
         exit(0)
+
+    ignored_sa_types = set(('projectOwner',
+                            'projectEditor', 'projectViewer', 'group'))
+    # ignored_sa_accounts = set(('deleted'))
     for iam_policy in json_contents:
         if iam_policy['policy']['bindings']:
             for binding in iam_policy['policy']['bindings']:
                 for member in binding['members']:
                     colon_counter = member.count(':')
                     if colon_counter == 1:
-                        sa_type,sa_name = member.split(':')
-                        sa_deleted = False
+                        sa_type, sa_name = member.split(':')
+                        sa_other = "notUsed"
                     else:
-                        sa_deleted,sa_type,sa_name = member.split(':')
-                    if sa_type != "group" and not sa_deleted:
+                        sa_other, sa_type, sa_name = member.split(':')
+
+                    if sa_type not in ignored_sa_types and sa_other != "deleted":
                         f_name = sa_name.split('@')[0]
                         l_name = sa_name.split('@')[0]
                         uid = sa_name
@@ -124,13 +129,14 @@ def parse_json(filename):
                             output_dict[email]['Entitlement'].append(
                                 f"{binding['role']} -> {rsc}")
                         else:
-                            output_dict[member] = {
+                            output_dict[email] = {
                                 "First_Name": f_name,
                                 "Last_Name": l_name,
                                 "UniqueID": uid,
                                 "Email": email,
                                 "Entitlement": [f"{binding['role']} -> {rsc}"]
                             }
+        # print (json.dumps(output_dict, indent=2, default=str))
                         # print(
                         #     f"{member} -> {binding['role']} -> {iam_policy['assetType']}"
                         # )
