@@ -241,25 +241,53 @@ def write_dictionary_to_csv(dictionary, filename):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-l', '--local', action='store_true')
-    group.add_argument('-r', '--remote', action='store_true')
+    CMD_DESC = (
+        "Script to parse the output of gcloud asset inventory. "
+        "It has two modes: remote\n or local. In local mode it expects 2 "
+        "input files. The first one is the output\n of `gcloud asset "
+        "search-all-iam-policies`. The second one is output of "
+        "`gcloud asset search-all-resources "
+        "--asset-types='iam.googleapis.com/ServiceAccount'`. In remote mode "
+        "it makes the corresponding API calls to get the data. It parses the "
+        "input and creates a CSV file with the merged info. It can optionally "
+        "upload the results to a GCS Bucket.")
+    parser = argparse.ArgumentParser(description=CMD_DESC)
+    ## Create a mutually exclusive parser group
+    # to make sure only one mode is used
+    # either remote or local, you can't use both
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-r',
+                       '--remote',
+                       action='store_const',
+                       dest='mode',
+                       const='remote',
+                       help='run in remote mode reading from apis (default)')
+    group.add_argument(
+        '-l',
+        '--local',
+        action='store_const',
+        dest='mode',
+        const='local',
+        help='run in local mode reading from passed in json files')
+    parser.set_defaults(mode='remote')
     parser.add_argument('-g',
                         '--gcs_bucket',
                         help='upload results to gcs bucket')
-    parser.add_argument('-i',
-                        '--iam_file',
-                        help='file containing all the iam policies')
-    parser.add_argument('-s',
-                        '--sas_file',
-                        help='file containing all the service account')
+    parser.add_argument(
+        '-i',
+        '--iam_file',
+        help='file containing all the iam policies (only in local mode)')
+    parser.add_argument(
+        '-s',
+        '--sas_file',
+        help='file containing all the service accounts (only in local mode)')
     parser.add_argument('-o',
                         '--output_file',
                         help='name of file to write results to')
     args = parser.parse_args()
 
-    if args.remote:
+    if args.mode == 'remote':
+        print('Script running in remote mode')
         if os.getenv("GCP_ORG_ID"):
             GCP_ORG_ID = os.getenv("GCP_ORG_ID")
         else:
@@ -281,12 +309,13 @@ if __name__ == "__main__":
             exit(0)
 
     ## If --remote is passed ignore the local variables
-    if args.remote and (args.iam_file or args.sas_file):
+    if args.mode == 'remote' and (args.iam_file or args.sas_file):
         print("-r is specified but local files are passed in " +
               "either switch to local mode or remove the file arguements")
         exit(0)
 
-    if args.local:
+    if args.mode == 'local':
+        print('Script running in local mode')
         ## We are in local mode, read in local json files
         IAM_JSON_FILENAME = args.iam_file
         SAS_JSON_FILENAME = args.sas_file
@@ -307,7 +336,7 @@ if __name__ == "__main__":
     write_dictionary_to_csv(merged_iam_sa_dictionary, CSV_FILENAME)
     print(f"Wrote results to {CSV_FILENAME}")
 
-    if args.local:
+    if args.mode == 'local':
         if args.gcs_bucket:
             GCS_BUCKET = args.gcs_bucket
             upload_file_gcp_bucket(GCS_BUCKET, CSV_FILENAME, CSV_FILENAME)
