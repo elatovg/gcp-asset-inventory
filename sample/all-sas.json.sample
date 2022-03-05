@@ -1,0 +1,53 @@
+[
+  {
+    "additionalAttributes": {
+      "email": "ci-account@PROJECT_ID.iam.gserviceaccount.com",
+      "uniqueId": "10757XXX"
+    },
+    "assetType": "iam.googleapis.com/ServiceAccount",
+    "displayName": "ci-account",
+    "folders": [
+      "folders/FOLDER_ID"
+    ],
+    "name": "//iam.googleapis.com/projects/PROJECT_ID/serviceAccounts/ci-account@PROJECT_ID.iam.gserviceaccount.com",
+    "organization": "organizations/ORG_ID",
+    "parentAssetType": "cloudresourcemanager.googleapis.com/Project",
+    "parentFullResourceName": "//cloudresourcemanager.googleapis.com/projects/PROJECT_ID",
+    "project": "projects/PROJECT_NUM",
+    "state": "ENABLED"
+  },
+  {
+    "additionalAttributes": {
+      "email": "PROJECT_NUM-compute@developer.gserviceaccount.com",
+      "uniqueId": "10552XXXX"
+    },
+    "assetType": "iam.googleapis.com/ServiceAccount",
+    "displayName": "Compute Engine default service account",
+    "folders": [
+      "folders/FOLDER_ID"
+    ],
+    "name": "//iam.googleapis.com/projects/PROJECT_ID/serviceAccounts/PROJECT_NUM-compute@developer.gserviceaccount.com",
+    "organization": "organizations/ORG_ID",
+    "parentAssetType": "cloudresourcemanager.googleapis.com/Project",
+    "parentFullResourceName": "//cloudresourcemanager.googleapis.com/projects/PROJECT_ID",
+    "project": "projects/PROJECT_NUM",
+    "state": "ENABLED"
+  },
+  {
+    "additionalAttributes": {
+      "email": "tf-testing@PROJECT_ID.iam.gserviceaccount.com",
+      "uniqueId": "10692XXX"
+    },
+    "assetType": "iam.googleapis.com/ServiceAccount",
+    "displayName": "tf-testing",
+    "folders": [
+      "folders/FOLDER_ID"
+    ],
+    "name": "//iam.googleapis.com/projects/PROJECT_ID/serviceAccounts/tf-testing@PROJECT_ID.iam.gserviceaccount.com",
+    "organization": "organizations/ORG_ID",
+    "parentAssetType": "cloudresourcemanager.googleapis.com/Project",
+    "parentFullResourceName": "//cloudresourcemanager.googleapis.com/projects/PROJECT_ID",
+    "project": "projects/PROJECT_NUM",
+    "state": "ENABLED"
+  }
+]

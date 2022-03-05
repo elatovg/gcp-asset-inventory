@@ -250,7 +250,8 @@ if __name__ == "__main__":
         "--asset-types='iam.googleapis.com/ServiceAccount'`. In remote mode "
         "it makes the corresponding API calls to get the data. It parses the "
         "input and creates a CSV file with the merged info. It can optionally "
-        "upload the results to a GCS Bucket.")
+        "upload the results to a GCS Bucket. *NOTE*: Google Managed/Agent "
+        "service accounts are not included.")
     parser = argparse.ArgumentParser(description=CMD_DESC)
     ## Create a mutually exclusive parser group
     # to make sure only one mode is used

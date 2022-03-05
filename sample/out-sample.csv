@@ -1,0 +1,9 @@
+First_Name,Last_Name,UniqueID,Entitlement,Email
+service-PROJECT_NUM,service-PROJECT_NUM,service-PROJECT_NUM@compute-system.iam.gserviceaccount.com,roles/compute.serviceAgent -> Project (PROJECT_ID),service-PROJECT_NUM@compute-system.iam.gserviceaccount.com
+PROJECT_NUM-compute,PROJECT_NUM-compute,Compute Engine default service account,roles/editor -> Project (PROJECT_ID),PROJECT_NUM-compute@developer.gserviceaccount.com
+PROJECT_NUM,PROJECT_NUM,PROJECT_NUM@cloudservices.gserviceaccount.com,roles/editor -> Project (PROJECT_ID),PROJECT_NUM@cloudservices.gserviceaccount.com
+ci-account,ci-account,ci-account,roles/owner -> Project (PROJECT_ID),ci-account@PROJECT_ID.iam.gserviceaccount.com
+tf-testing,tf-testing,tf-testing,roles/owner -> Project (PROJECT_ID);roles/resourcemanager.projectCreator -> Folder (FOLDER_ID),tf-testing@PROJECT_ID.iam.gserviceaccount.com
+user1,user1,user1@DOMAIN_NAME,roles/resourcemanager.folderAdmin -> Folder (FOLDER_ID);roles/resourcemanager.folderEditor -> Folder (FOLDER_ID),user1@DOMAIN_NAME
+service-PROJECT_NUM,service-PROJECT_NUM,service-PROJECT_NUM@gcp-sa-pubsub.iam.gserviceaccount.com,roles/pubsub.publisher -> Topic (my-topic),service-PROJECT_NUM@gcp-sa-pubsub.iam.gserviceaccount.com
+user2,user2,user2@DOMAIN_NAME,roles/iam.serviceAccountTokenCreator -> ServiceAccount (user2-sa@PROJECT_ID.iam.gserviceaccount.com),user2@DOMAIN_NAME
