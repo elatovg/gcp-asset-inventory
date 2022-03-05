@@ -10,7 +10,9 @@ import csv
 import argparse
 from google.cloud import asset_v1
 from google.cloud import storage
+from google.api_core.exceptions import GoogleAPIError
 import proto
+import googleapiclient.errors
 
 
 def get_all_sas(org_id):
@@ -20,10 +22,15 @@ def get_all_sas(org_id):
     scope = f"organizations/{org_id}"
     asset_types = ['iam.googleapis.com/ServiceAccount']
     client = asset_v1.AssetServiceClient()
-    response = client.search_all_resources(request={
-        "scope": scope,
-        "asset_types": asset_types
-    })
+    try:
+        response = client.search_all_resources(request={
+            "scope": scope,
+            "asset_types": asset_types
+        })
+    except (GoogleAPIError, googleapiclient.errors.HttpError) as err:
+        print(f'API Error: {err}')
+        exit(0)
+        # raise RuntimeError(f'Error fetching Asset Inventory entries: {e}')
     # all_sas = {}
     # for resource in response:
     #     # print(resource.name.split('/')[-1])
@@ -43,10 +50,14 @@ def get_iam_policies(svc_account, org_id):
     scope = f"organizations/{org_id}"
     query = f"policy:{svc_account}"
     client = asset_v1.AssetServiceClient()
-    response = client.search_all_iam_policies(request={
-        "scope": scope,
-        "query": query
-    })
+    try:
+        response = client.search_all_iam_policies(request={
+            "scope": scope,
+            "query": query
+        })
+    except (GoogleAPIError, googleapiclient.errors.HttpError) as err:
+        print(f'API Error: {err}')
+        exit(0)
     sa_permissions = {}
     for policy in response:
         sa_permissions["resource"] = policy.resource
@@ -67,7 +78,11 @@ def get_all_iam_policies(org_id):
     """
     scope = f"organizations/{org_id}"
     client = asset_v1.AssetServiceClient()
-    response = client.search_all_iam_policies(request={"scope": scope})
+    try:
+        response = client.search_all_iam_policies(request={"scope": scope})
+    except (GoogleAPIError, googleapiclient.errors.HttpError) as err:
+        print(f'API Error: {err}')
+        exit(0)
     ## converting protobuf to dictionary
     # https://github.com/googleapis/python-vision/issues/70#issuecomment-749135327
     serializable_assets = [proto.Message.to_dict(asset) for asset in response]
@@ -341,8 +356,8 @@ if __name__ == "__main__":
         if args.gcs_bucket:
             GCS_BUCKET = args.gcs_bucket
             upload_file_gcp_bucket(GCS_BUCKET, CSV_FILENAME, CSV_FILENAME)
-            print(f"uploaded file {CSV_FILENAME} to {GCS_BUCKET}")
+            print(f"Uploaded file {CSV_FILENAME} to {GCS_BUCKET}")
     else:
         # we are in the remote mode, values should be obtained from env vars
         upload_file_gcp_bucket(GCS_BUCKET, CSV_FILENAME, CSV_FILENAME)
-        print(f"uploaded file {CSV_FILENAME} to {GCS_BUCKET}")
+        print(f"Uploaded file {CSV_FILENAME} to {GCS_BUCKET}")
