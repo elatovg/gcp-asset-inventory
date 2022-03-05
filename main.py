@@ -8,6 +8,7 @@ import json
 import codecs
 import csv
 import argparse
+import base64
 from google.cloud import asset_v1
 from google.cloud import storage
 from google.api_core.exceptions import GoogleAPIError
@@ -255,6 +256,95 @@ def write_dictionary_to_csv(dictionary, filename):
         print("I/O error, can't write out CSV file")
 
 
+def cf_entry_event(event, context):
+    """ Event Entry point for the cloudfunction"""
+    print(
+        """This Function was triggered by messageId {} published at {} to {}""".
+        format(context.event_id, context.timestamp, context.resource["name"]))
+
+    if 'data' in event:
+        data = base64.b64decode(event['data']).decode('utf-8')
+        print(f"data received from trigger: {data}")
+
+    try:
+        run_remote()
+        return "Remote mode finished successfully"
+    except:
+        print("Remote mode failed")
+        exit(0)
+
+
+def cf_entry_http(request):
+    """ HTTP Entry point for the cloudfunction"""
+    print(f"This Function was triggered by request {request}")
+
+    # if 'data' in event:
+    #     data = base64.b64decode(event['data']).decode('utf-8')
+    #     print(f"data received from trigger: {data}")
+    try:
+        run_remote()
+        return "Remote mode finished successfully"
+    except:
+        print("Remote mode failed")
+        exit(0)
+
+
+def run_local(iam_json_filename, sas_json_filename, csv_filename, gcs_bucket):
+    """
+    Execute the script in local mode, this expect json files to be passed in
+    """
+    print('Script running in local mode')
+    ## We are in local mode, read in local json files
+    all_iam_policies = import_json_as_dictionary(iam_json_filename)
+    all_svc_accts = import_json_as_dictionary(sas_json_filename)
+
+    ## Write out CSV from the Dictionary
+    merged_iam_sa_dictionary = parse_assets_output(all_iam_policies,
+                                                   all_svc_accts)
+    write_dictionary_to_csv(merged_iam_sa_dictionary, csv_filename)
+    print(f"Wrote results to {csv_filename}")
+
+    if gcs_bucket:
+        upload_file_gcp_bucket(gcs_bucket, csv_filename, csv_filename)
+        print(f"Uploaded file {csv_filename} to {gcs_bucket}")
+
+
+def run_remote():
+    """
+    Execute the script in remote mode, this gets the data using APIs
+    """
+    print('Script running in remote mode')
+    if os.getenv("GCP_ORG_ID"):
+        gcp_org_id = os.getenv("GCP_ORG_ID")
+    else:
+        print("Pass in GCP ORG ID by setting an env var " +
+              "called 'GCP_ORG_ID'")
+        exit(0)
+    if os.getenv("GCS_BUCKET_NAME"):
+        gcs_bucket = os.getenv("GCS_BUCKET_NAME")
+    else:
+        print("Pass in GCS Bucket by setting an env var " +
+              "called 'GCS_BUCKET_NAME'")
+        exit(0)
+
+    if os.getenv("CSV_OUTPUT_FILE"):
+        csv_filename = os.getenv("CSV_OUTPUT_FILE")
+    else:
+        print("Pass in output filename by setting an env var " +
+              "called 'CSV_OUTPUT_FILE'")
+        exit(0)
+
+    all_iam_policies = get_all_iam_policies(gcp_org_id)
+    all_svc_accts = get_all_sas(gcp_org_id)
+    merged_iam_sa_dictionary = parse_assets_output(all_iam_policies,
+                                                   all_svc_accts)
+    csv_file_full_path = f"/tmp/{csv_filename}"
+    write_dictionary_to_csv(merged_iam_sa_dictionary, csv_file_full_path)
+    print(f"Wrote results to {csv_file_full_path}")
+    upload_file_gcp_bucket(gcs_bucket, csv_filename, csv_file_full_path)
+    print(f"Uploaded file {csv_file_full_path} to {gcs_bucket}")
+
+
 if __name__ == "__main__":
     CMD_DESC = (
         "Script to parse the output of gcloud asset inventory. "
@@ -302,62 +392,25 @@ if __name__ == "__main__":
                         help='name of file to write results to')
     args = parser.parse_args()
 
-    if args.mode == 'remote':
-        print('Script running in remote mode')
-        if os.getenv("GCP_ORG_ID"):
-            GCP_ORG_ID = os.getenv("GCP_ORG_ID")
-        else:
-            print("Pass in GCP ORG ID by setting an env var " +
-                  "called 'GCP_ORG_ID'")
-            exit(0)
-        if os.getenv("GCS_BUCKET_NAME"):
-            GCS_BUCKET = os.getenv("GCS_BUCKET_NAME")
-        else:
-            print("Pass in GCS Bucket by setting an env var " +
-                  "called 'GCS_BUCKET_NAME'")
-            exit(0)
-
-        if os.getenv("CSV_OUTPUT_FILE"):
-            CSV_FILENAME = os.getenv("CSV_OUTPUT_FILE")
-        else:
-            print("Pass in output filename by setting an env var " +
-                  "called 'CSV_OUTPUT_FILE'")
-            exit(0)
-
     ## If --remote is passed ignore the local variables
     if args.mode == 'remote' and (args.iam_file or args.sas_file):
         print("-r is specified but local files are passed in " +
               "either switch to local mode or remove the file arguements")
         exit(0)
 
+    if args.mode == 'remote':
+        run_remote()
+
     if args.mode == 'local':
-        print('Script running in local mode')
-        ## We are in local mode, read in local json files
         IAM_JSON_FILENAME = args.iam_file
         SAS_JSON_FILENAME = args.sas_file
-        ALL_IAM_POLICIES = import_json_as_dictionary(IAM_JSON_FILENAME)
-        ALL_SVC_ACCTS = import_json_as_dictionary(SAS_JSON_FILENAME)
         if args.output_file:
             CSV_FILENAME = args.output_file
         else:
             CSV_FILENAME = IAM_JSON_FILENAME.replace('json', 'csv')
-    else:
-        ## Else we are in remote mode, use APIs to get assets results
-        ALL_IAM_POLICIES = get_all_iam_policies(GCP_ORG_ID)
-        ALL_SVC_ACCTS = get_all_sas(GCP_ORG_ID)
-
-    ## Write out CSV from the Dictionary
-    merged_iam_sa_dictionary = parse_assets_output(ALL_IAM_POLICIES,
-                                                   ALL_SVC_ACCTS)
-    write_dictionary_to_csv(merged_iam_sa_dictionary, CSV_FILENAME)
-    print(f"Wrote results to {CSV_FILENAME}")
-
-    if args.mode == 'local':
         if args.gcs_bucket:
             GCS_BUCKET = args.gcs_bucket
-            upload_file_gcp_bucket(GCS_BUCKET, CSV_FILENAME, CSV_FILENAME)
-            print(f"Uploaded file {CSV_FILENAME} to {GCS_BUCKET}")
-    else:
-        # we are in the remote mode, values should be obtained from env vars
-        upload_file_gcp_bucket(GCS_BUCKET, CSV_FILENAME, CSV_FILENAME)
-        print(f"Uploaded file {CSV_FILENAME} to {GCS_BUCKET}")
+        else:
+            GCS_BUCKET = ""
+        run_local(IAM_JSON_FILENAME, SAS_JSON_FILENAME, CSV_FILENAME,
+                  GCS_BUCKET)
