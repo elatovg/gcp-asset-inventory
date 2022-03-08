@@ -9,6 +9,7 @@ import codecs
 import csv
 import argparse
 import base64
+import re
 from google.cloud import asset_v1
 from google.cloud import storage
 from google.api_core.exceptions import GoogleAPIError
@@ -143,6 +144,59 @@ def import_json_as_dictionary(filename):
 
     return json_contents
 
+def get_app_id_from_email(sa_email,all_sas_dictionary):
+    '''
+    Given an email address and all the service accounts get the app id
+    from the email attribute (can be modified to get it from the description)
+    '''
+    pattern = "^sa-(.*)-(.*)-(.*)-(.*)@(.*)$"
+    for svc_account in all_sas_dictionary:
+        # print(svc_account)
+        ## Looks like gcloud assets --format json and
+        # python client libraries uses different
+        # formatting for keys, gcloud uses camelCase
+        # and api use under_scores, manually checking
+        # for both to support both use cases
+        if 'additional_attributes' in svc_account:
+            current_email = svc_account['additional_attributes']['email']
+            if current_email == sa_email:
+                match = re.search(pattern,current_email)
+                if match:
+                    # print(match.groups())
+                    _env,_scope,app_id,_app,_domain_name = match.groups()
+                    break
+                ## Uncomment below if you want to use the Description of the
+                ## service account to get the appID
+                # if 'display_name' in svc_account:
+                #     if svc_account['display_name']:
+                #         app_id = svc_account['display_name']
+                #         # print(svc_account)
+                #     else:
+                #         app_id = sa_email
+                #     ## Stop traversing the dictionary we
+                #     ## determined the service account
+                #     break
+        elif 'additionalAttributes' in svc_account:
+            current_email = svc_account['additionalAttributes']['email']
+            if current_email == sa_email:
+                match = re.search(pattern,current_email)
+                if match:
+                    _env,_scope,app_id,_app = match.groups()
+                    break
+                ## Uncomment below if you want to use the Description of the
+                ## service account to get the appID
+                # if 'displayName' in svc_account:
+                #     app_id = svc_account['displayName']
+                #     ## Stop traversing the dictionary we
+                #     ## found service account
+                #     break
+    else:
+        ## the emails is not defined for the service so using 'gcp' for
+        ## unique id
+        app_id = "gcp"
+
+    return app_id
+
 
 def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
     """
@@ -179,38 +233,7 @@ def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
                         else:
                             f_name = l_name = sa_name
                         email = sa_name
-                        for svc_account in all_sas_dictionary:
-                            # print(svc_account)
-                            ## Looks like gcloud assets --format json and
-                            # python client libraries uses different
-                            # formatting for keys, gcloud uses camelCase
-                            # and api use under_scores, manually checking
-                            # for both to support both use cases
-                            if 'additional_attributes' in svc_account:
-                                if svc_account['additional_attributes'][
-                                        'email'] == email:
-                                    if 'display_name' in svc_account:
-                                        if svc_account['display_name']:
-                                            uid = svc_account['display_name']
-                                            # print(svc_account)
-                                        else:
-                                            uid = sa_name
-                                        ## Stop traversing the dictionary we
-                                        ## determined the service account
-                                        break
-                            elif 'additionalAttributes' in svc_account:
-                                if svc_account['additionalAttributes'][
-                                        'email'] == email:
-                                    if 'displayName' in svc_account:
-                                        uid = svc_account['displayName']
-                                        ## Stop traversing the dictionary we
-                                        ## found service account
-                                        break
-                        else:
-                            ## the DisplayName/Description is not
-                            # defined for the service so using email
-                            # for unique id
-                            uid = sa_name
+                        uid = get_app_id_from_email(email,all_sas_dictionary)
                         if 'assetType' in iam_policy:
                             rsc_type = iam_policy['assetType'].split('/')[-1]
                         elif 'asset_type' in iam_policy:
