@@ -144,7 +144,8 @@ def import_json_as_dictionary(filename):
 
     return json_contents
 
-def get_app_id_from_email(sa_email,all_sas_dictionary):
+
+def get_app_id_from_email(sa_email, all_sas_dictionary):
     '''
     Given an email address and all the service accounts get the app id
     from the email attribute (can be modified to get it from the description)
@@ -160,10 +161,10 @@ def get_app_id_from_email(sa_email,all_sas_dictionary):
         if 'additional_attributes' in svc_account:
             current_email = svc_account['additional_attributes']['email']
             if current_email == sa_email:
-                match = re.search(pattern,current_email)
+                match = re.search(pattern, current_email)
                 if match:
                     # print(match.groups())
-                    _env,_scope,app_id,_app,_domain_name = match.groups()
+                    _env, _scope, app_id, _app, _domain_name = match.groups()
                     break
                 ## Uncomment below if you want to use the Description of the
                 ## service account to get the appID
@@ -179,9 +180,9 @@ def get_app_id_from_email(sa_email,all_sas_dictionary):
         elif 'additionalAttributes' in svc_account:
             current_email = svc_account['additionalAttributes']['email']
             if current_email == sa_email:
-                match = re.search(pattern,current_email)
+                match = re.search(pattern, current_email)
                 if match:
-                    _env,_scope,app_id,_app = match.groups()
+                    _env, _scope, app_id, _app = match.groups()
                     break
                 ## Uncomment below if you want to use the Description of the
                 ## service account to get the appID
@@ -233,7 +234,7 @@ def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
                         else:
                             f_name = l_name = sa_name
                         email = sa_name
-                        uid = get_app_id_from_email(email,all_sas_dictionary)
+                        uid = get_app_id_from_email(email, all_sas_dictionary)
                         if 'assetType' in iam_policy:
                             rsc_type = iam_policy['assetType'].split('/')[-1]
                         elif 'asset_type' in iam_policy:
