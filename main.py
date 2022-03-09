@@ -182,7 +182,7 @@ def get_app_id_from_email(sa_email, all_sas_dictionary):
             if current_email == sa_email:
                 match = re.search(pattern, current_email)
                 if match:
-                    _env, _scope, app_id, _app = match.groups()
+                    _env, _scope, app_id, _app, _domain_name = match.groups()
                     break
                 ## Uncomment below if you want to use the Description of the
                 ## service account to get the appID
