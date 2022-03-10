@@ -9,7 +9,7 @@ import codecs
 import csv
 import argparse
 import base64
-import re
+# import re
 from google.cloud import asset_v1
 from google.cloud import storage
 from google.api_core.exceptions import GoogleAPIError
@@ -145,12 +145,12 @@ def import_json_as_dictionary(filename):
     return json_contents
 
 
-def get_app_id_from_email(sa_email, all_sas_dictionary):
+def get_uid_from_email(sa_email, all_sas_dictionary):
     '''
-    Given an email address and all the service accounts get the app id
-    from the email attribute (can be modified to get it from the description)
+    Given an email address and all the service accounts get the uid
+    from the email attribute
     '''
-    pattern = "^sa-(.*)-(.*)-(.*)-(.*)@(.*)$"
+    # pattern = "^sa-(.*)-(.*)-(.*)-(.*)@(.*)$"
     for svc_account in all_sas_dictionary:
         # print(svc_account)
         ## Looks like gcloud assets --format json and
@@ -161,11 +161,13 @@ def get_app_id_from_email(sa_email, all_sas_dictionary):
         if 'additional_attributes' in svc_account:
             current_email = svc_account['additional_attributes']['email']
             if current_email == sa_email:
-                match = re.search(pattern, current_email)
-                if match:
-                    # print(match.groups())
-                    _env, _scope, app_id, _app, _domain_name = match.groups()
-                    break
+                uid = svc_account['additional_attributes']['uniqueId']
+                break
+                # match = re.search(pattern, current_email)
+                # if match:
+                #     # print(match.groups())
+                #     _env, _scope, app_id, _app, _domain_name = match.groups()
+                #     break
                 ## Uncomment below if you want to use the Description of the
                 ## service account to get the appID
                 # if 'display_name' in svc_account:
@@ -180,10 +182,12 @@ def get_app_id_from_email(sa_email, all_sas_dictionary):
         elif 'additionalAttributes' in svc_account:
             current_email = svc_account['additionalAttributes']['email']
             if current_email == sa_email:
-                match = re.search(pattern, current_email)
-                if match:
-                    _env, _scope, app_id, _app, _domain_name = match.groups()
-                    break
+                uid = svc_account['additionalAttributes']['uniqueId']
+                break
+                # match = re.search(pattern, current_email)
+                # if match:
+                #     _env, _scope, app_id, _app, _domain_name = match.groups()
+                #     break
                 ## Uncomment below if you want to use the Description of the
                 ## service account to get the appID
                 # if 'displayName' in svc_account:
@@ -194,9 +198,9 @@ def get_app_id_from_email(sa_email, all_sas_dictionary):
     else:
         ## the emails is not defined for the service so using 'gcp' for
         ## unique id
-        app_id = "gcp"
+        uid = sa_email
 
-    return app_id
+    return uid
 
 
 def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
@@ -234,7 +238,7 @@ def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
                         else:
                             f_name = l_name = sa_name
                         email = sa_name
-                        uid = get_app_id_from_email(email, all_sas_dictionary)
+                        uid = get_uid_from_email(email, all_sas_dictionary)
                         if 'assetType' in iam_policy:
                             rsc_type = iam_policy['assetType'].split('/')[-1]
                         elif 'asset_type' in iam_policy:
@@ -251,7 +255,8 @@ def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
                                 "Last_Name": l_name,
                                 "UniqueID": uid,
                                 "Email": email,
-                                "Entitlement": [f"{binding['role']} -> {rsc}"]
+                                "Entitlement": [f"{binding['role']} -> {rsc}"],
+                                "AppOwner": "a123456"
                             }
         # print (json.dumps(output_dict, indent=2, default=str))
         # print(
@@ -266,7 +271,7 @@ def write_dictionary_to_csv(dictionary, filename):
     Write the dictionary out to a csv file
     '''
     csv_columns = [
-        'First_Name', 'Last_Name', 'UniqueID', 'Entitlement', 'Email'
+        'First_Name', 'Last_Name', 'UniqueID', 'Entitlement', 'Email', 'AppOwner'
     ]
     csv_file = filename
     try:
