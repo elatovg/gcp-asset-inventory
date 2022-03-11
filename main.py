@@ -196,9 +196,9 @@ def get_uid_from_email(sa_email, all_sas_dictionary):
                 #     ## found service account
                 #     break
     else:
-        ## the emails is not defined for the service so using 'gcp' for
-        ## unique id
-        uid = sa_email
+        ## the email is not customer owned but a gcp owned agent
+        ## service account, so marking it as such
+        uid = "gcp_owned"
 
     return uid
 
@@ -244,20 +244,21 @@ def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
                         elif 'asset_type' in iam_policy:
                             rsc_type = iam_policy['asset_type'].split('/')[-1]
                         rsc_name = iam_policy['resource'].split('/')[-1]
-                        rsc = f"{rsc_type} ({rsc_name})"
-
-                        if email in output_dict:
-                            output_dict[email]['Entitlement'].append(
-                                f"{binding['role']} -> {rsc}")
-                        else:
-                            output_dict[email] = {
-                                "First_Name": f_name,
-                                "Last_Name": l_name,
-                                "UniqueID": uid,
-                                "Email": email,
-                                "Entitlement": [f"{binding['role']} -> {rsc}"],
-                                "AppOwner": "a123456"
-                            }
+                        rsc = f"{rsc_type}_({rsc_name})"
+                        role = binding['role'].replace('roles/', '')
+                        if uid != 'gcp_owned':
+                            if email in output_dict:
+                                output_dict[email]['Entitlement'].append(
+                                    f"{role}_{rsc}")
+                            else:
+                                output_dict[email] = {
+                                    "First_Name": f_name,
+                                    "Last_Name": l_name,
+                                    "UniqueID": uid,
+                                    "Email": email,
+                                    "Entitlement": [f"{role}_{rsc}"],
+                                    "AppOwner": "a123456"
+                                }
         # print (json.dumps(output_dict, indent=2, default=str))
         # print(
         #     f"{member} -> {binding['role']} -> {iam_policy['assetType']}"
@@ -271,7 +272,8 @@ def write_dictionary_to_csv(dictionary, filename):
     Write the dictionary out to a csv file
     '''
     csv_columns = [
-        'First_Name', 'Last_Name', 'UniqueID', 'Entitlement', 'Email', 'AppOwner'
+        'First_Name', 'Last_Name', 'UniqueID', 'Entitlement', 'Email',
+        'AppOwner'
     ]
     csv_file = filename
     try:
