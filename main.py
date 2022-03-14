@@ -196,6 +196,7 @@ def get_uid_from_email(sa_email, all_sas_dictionary):
                 #     ## found service account
                 #     break
     else:
+
         ## the email is not customer owned but a gcp owned agent
         ## service account, so marking it as such
         uid = "gcp_owned"
@@ -237,8 +238,14 @@ def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
                             l_name = sa_name.split('@')[0]
                         else:
                             f_name = l_name = sa_name
+
                         email = sa_name
-                        uid = get_uid_from_email(email, all_sas_dictionary)
+
+                        if sa_type == 'user':
+                            uid = email
+                        else:
+                            uid = get_uid_from_email(email, all_sas_dictionary)
+
                         if 'assetType' in iam_policy:
                             rsc_type = iam_policy['assetType'].split('/')[-1]
                         elif 'asset_type' in iam_policy:
