@@ -204,73 +204,162 @@ def get_uid_from_email(sa_email, all_sas_dictionary):
     return uid
 
 
-def parse_assets_output(all_iam_policies_dictionary, all_sas_dictionary):
+def get_policy_for_identity(identity_info,
+                            iam_policy=None,
+                            binding=None,
+                            org_id=None):
+    """
+    Get Iam policies with the iam-policy-analyze api, which also shows
+    group inherited policies. If user-a is part of group-a, then a policy
+    that is using the group will be listed for user-a
+    """
+    principal_policy = {}
+    if identity_info['sa_type'] == "serviceAccount" or org_id is None:
+        if 'assetType' in iam_policy:
+            rsc_type = iam_policy['assetType'].split('/')[-1]
+        elif 'asset_type' in iam_policy:
+            rsc_type = iam_policy['asset_type'].split('/')[-1]
+        rsc_name = iam_policy['resource'].split('/')[-1]
+        rsc = f"{rsc_type}_({rsc_name})"
+        role = binding['role'].replace('roles/', '')
+        principal_policy[identity_info['email']] = {
+            "First_Name": identity_info['first_name'],
+            "Last_Name": identity_info['last_name'],
+            "UniqueID": identity_info['uid'],
+            "Email": identity_info['email'],
+            "Entitlement": [f"{role}_{rsc}"],
+            "AppOwner": "a123456"
+        }
+    else:
+        client = asset_v1.AssetServiceClient()
+        parent = f"organizations/{org_id}"
+
+        # Build analysis query
+        analysis_query = asset_v1.IamPolicyAnalysisQuery()
+        analysis_query.scope = parent
+        analysis_query.identity_selector.identity = f"user:{identity_info['email']}"
+        analysis_query.options.expand_groups = True
+        analysis_query.options.output_group_edges = True
+
+        response = client.analyze_iam_policy(
+            request={"analysis_query": analysis_query})
+
+        for policy in proto.Message.to_dict(
+                response)["main_analysis"]["analysis_results"]:
+            # print (json.dumps(policy, indent=2, default=str))
+            rsc_type = policy['attached_resource_full_name'].split('/')[-2]
+            rsc_name = policy['attached_resource_full_name'].split('/')[-1]
+            role = policy['iam_binding']['role'].replace('roles/', '')
+            rsc = f"{rsc_type}_({rsc_name})"
+            if policy['identity_list']['group_edges']:
+                group_name = policy['identity_list']['group_edges'][0][
+                    'source_node'].replace(':', '_')
+                add_info = f'via_{group_name}'
+                entitlement = f"{role}_{rsc}_{add_info}"
+            else:
+                entitlement = f"{role}_{rsc}"
+            if identity_info['email'] in principal_policy:
+                principal_policy[identity_info['email']]["Entitlement"].append(
+                    entitlement)
+            else:
+                principal_policy[identity_info['email']] = {
+                    "First_Name": identity_info['first_name'],
+                    "Last_Name": identity_info['last_name'],
+                    "UniqueID": identity_info['uid'],
+                    "Email": identity_info['email'],
+                    "Entitlement": [entitlement],
+                    "AppOwner": "a123456"
+                }
+
+            # print (json.dumps(policy, indent=2, default=str))
+
+    return principal_policy[identity_info['email']]
+
+
+def get_identity_info(member):
+    """
+    Create an identity dictionary to start populating information
+    about the identity
+    """
+    identity_info = {}
+    ignored_sa_types = set(
+        ('projectOwner', 'projectEditor', 'projectViewer', 'group'))
+    colon_counter = member.count(':')
+    if colon_counter == 1:
+        sa_type, sa_name = member.split(':')
+        sa_other = "notUsed"
+    elif colon_counter == 2:
+        sa_other, sa_type, sa_name = member.split(':')
+    else:
+        ## Usually no colons means it's allUsers,
+        # which is not in email format
+        sa_name = member
+        sa_type = member
+        sa_other = "notUsed"
+
+    if sa_type not in ignored_sa_types and sa_other != "deleted":
+        if sa_type != "allUsers":
+            f_name = sa_name.split('@')[0]
+            l_name = sa_name.split('@')[0]
+        else:
+            f_name = l_name = sa_name
+
+        identity_info['sa_type'] = sa_type
+        identity_info['email'] = sa_name
+        identity_info['first_name'] = f_name
+        identity_info['last_name'] = l_name
+    else:
+        identity_info["sa_type"] = "notUsed"
+
+    return identity_info
+
+
+def parse_assets_output(all_iam_policies_dictionary,
+                        all_sas_dictionary,
+                        gcp_org_id=None):
     """
     Take input from `gcloud asset search-all-iam-policies` and
     `gcloud asset search-all-resources --asset-types='iam.googleapis.com/ServiceAccount'`
     and produce a dictionary of those files merged
     """
     output_dict = {}
-    ignored_sa_types = set(
-        ('projectOwner', 'projectEditor', 'projectViewer', 'group'))
     # ignored_sa_accounts = set(('deleted'))
     for iam_policy in all_iam_policies_dictionary:
         if iam_policy['policy']['bindings']:
             for binding in iam_policy['policy']['bindings']:
                 for member in binding['members']:
                     # print(member)
-                    colon_counter = member.count(':')
-                    if colon_counter == 1:
-                        sa_type, sa_name = member.split(':')
-                        sa_other = "notUsed"
-                    elif colon_counter == 2:
-                        sa_other, sa_type, sa_name = member.split(':')
-                    else:
-                        ## Usually no colons means it's allUsers,
-                        # which is not in email format
-                        sa_name = member
-                        sa_type = member
-                        sa_other = "notUsed"
+                    identity = get_identity_info(member)
+                    if identity['sa_type'] == 'user' and gcp_org_id is not None:
+                        identity['uid'] = identity['email']
+                        if identity['email'] not in output_dict:
+                            identity_policy = get_policy_for_identity(
+                                identity, iam_policy=None, org_id=gcp_org_id)
+                            # print(identity_policy)
+                            output_dict[identity['email']] = identity_policy
 
-                    if sa_type not in ignored_sa_types and sa_other != "deleted":
-                        if sa_type != "allUsers":
-                            f_name = sa_name.split('@')[0]
-                            l_name = sa_name.split('@')[0]
+                    elif identity['sa_type'] != 'notUsed':
+                        if identity['sa_type'] == 'user':
+                            identity['uid'] = identity['email']
                         else:
-                            f_name = l_name = sa_name
-
-                        email = sa_name
-
-                        if sa_type == 'user':
-                            uid = email
-                        else:
-                            uid = get_uid_from_email(email, all_sas_dictionary)
-
-                        if 'assetType' in iam_policy:
-                            rsc_type = iam_policy['assetType'].split('/')[-1]
-                        elif 'asset_type' in iam_policy:
-                            rsc_type = iam_policy['asset_type'].split('/')[-1]
-                        rsc_name = iam_policy['resource'].split('/')[-1]
-                        rsc = f"{rsc_type}_({rsc_name})"
-                        role = binding['role'].replace('roles/', '')
-                        if uid != 'gcp_owned':
-                            if email in output_dict:
-                                output_dict[email]['Entitlement'].append(
-                                    f"{role}_{rsc}")
+                            identity['uid'] = get_uid_from_email(
+                                identity['email'], all_sas_dictionary)
+                        if identity['uid'] != 'gcp_owned':
+                            identity_policy = get_policy_for_identity(
+                                identity,
+                                iam_policy=iam_policy,
+                                binding=binding,
+                                org_id=None)
+                            # print(identity_policy)
+                            if identity['email'] in output_dict:
+                                # print(output_dict)
+                                output_dict[
+                                    identity['email']]['Entitlement'].append(
+                                        identity_policy['Entitlement'][0])
                             else:
-                                output_dict[email] = {
-                                    "First_Name": f_name,
-                                    "Last_Name": l_name,
-                                    "UniqueID": uid,
-                                    "Email": email,
-                                    "Entitlement": [f"{role}_{rsc}"],
-                                    "AppOwner": "a123456"
-                                }
-        # print (json.dumps(output_dict, indent=2, default=str))
-        # print(
-        #     f"{member} -> {binding['role']} -> {iam_policy['assetType']}"
-        # )
+                                output_dict[identity['email']] = identity_policy
 
+    # print (json.dumps(output_dict, indent=2, default=str))
     return output_dict
 
 
@@ -375,7 +464,7 @@ def run_remote():
     all_iam_policies = get_all_iam_policies(gcp_org_id)
     all_svc_accts = get_all_sas(gcp_org_id)
     merged_iam_sa_dictionary = parse_assets_output(all_iam_policies,
-                                                   all_svc_accts)
+                                                   all_svc_accts, gcp_org_id)
     csv_file_full_path = f"/tmp/{csv_filename}"
     write_dictionary_to_csv(merged_iam_sa_dictionary, csv_file_full_path)
     print(f"Wrote results to {csv_file_full_path}")
