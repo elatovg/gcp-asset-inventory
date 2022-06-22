@@ -23,10 +23,12 @@ def get_all_sas(org_id):
     """
     scope = f"organizations/{org_id}"
     asset_types = ['iam.googleapis.com/ServiceAccount']
+    query = "NOT name:(tf)"
     client = asset_v1.AssetServiceClient()
     try:
         response = client.search_all_resources(request={
             "scope": scope,
+            "query": query,
             "asset_types": asset_types
         })
     except (GoogleAPIError, googleapiclient.errors.HttpError) as err:
