@@ -260,18 +260,21 @@ def get_policy_for_identity(identity_info,
                 entitlement = f"{role}_{rsc}_{add_info}"
             else:
                 entitlement = f"{role}_{rsc}"
-            if identity_info['email'] in principal_policy:
-                principal_policy[identity_info['email']]["Entitlement"].append(
-                    entitlement)
-            else:
-                principal_policy[identity_info['email']] = {
-                    "First_Name": identity_info['first_name'],
-                    "Last_Name": identity_info['last_name'],
-                    "UniqueID": identity_info['uid'],
-                    "Email": identity_info['email'],
-                    "Entitlement": [entitlement],
-                    "AppOwner": "a123456"
-                }
+
+            ## Skip the "Policy Resource"
+            if rsc_type != "Policy":
+                if identity_info['email'] in principal_policy:
+                    principal_policy[identity_info['email']]["Entitlement"].append(
+                        entitlement)
+                else:
+                    principal_policy[identity_info['email']] = {
+                        "First_Name": identity_info['first_name'],
+                        "Last_Name": identity_info['last_name'],
+                        "UniqueID": identity_info['uid'],
+                        "Email": identity_info['email'],
+                        "Entitlement": [entitlement],
+                        "AppOwner": "a123456"
+                    }
 
             # print (json.dumps(policy, indent=2, default=str))
 
@@ -327,39 +330,41 @@ def parse_assets_output(all_iam_policies_dictionary,
     output_dict = {}
     # ignored_sa_accounts = set(('deleted'))
     for iam_policy in all_iam_policies_dictionary:
-        if iam_policy['policy']['bindings']:
-            for binding in iam_policy['policy']['bindings']:
-                for member in binding['members']:
-                    # print(member)
-                    identity = get_identity_info(member)
-                    if identity['sa_type'] == 'user' and gcp_org_id is not None:
-                        identity['uid'] = identity['email']
-                        if identity['email'] not in output_dict:
-                            identity_policy = get_policy_for_identity(
-                                identity, iam_policy=None, org_id=gcp_org_id)
-                            # print(identity_policy)
-                            output_dict[identity['email']] = identity_policy
-
-                    elif identity['sa_type'] != 'notUsed':
-                        if identity['sa_type'] == 'user':
+        # Skip the Policy Resource type
+        if iam_policy['assetType'] != "orgpolicy.googleapis.com/Policy":
+            if iam_policy['policy']['bindings']:
+                for binding in iam_policy['policy']['bindings']:
+                    for member in binding['members']:
+                        # print(member)
+                        identity = get_identity_info(member)
+                        if identity['sa_type'] == 'user' and gcp_org_id is not None:
                             identity['uid'] = identity['email']
-                        else:
-                            identity['uid'] = get_uid_from_email(
-                                identity['email'], all_sas_dictionary)
-                        if identity['uid'] != 'gcp_owned':
-                            identity_policy = get_policy_for_identity(
-                                identity,
-                                iam_policy=iam_policy,
-                                binding=binding,
-                                org_id=None)
-                            # print(identity_policy)
-                            if identity['email'] in output_dict:
-                                # print(output_dict)
-                                output_dict[
-                                    identity['email']]['Entitlement'].append(
-                                        identity_policy['Entitlement'][0])
-                            else:
+                            if identity['email'] not in output_dict:
+                                identity_policy = get_policy_for_identity(
+                                    identity, iam_policy=None, org_id=gcp_org_id)
+                                # print(identity_policy)
                                 output_dict[identity['email']] = identity_policy
+
+                        elif identity['sa_type'] != 'notUsed':
+                            if identity['sa_type'] == 'user':
+                                identity['uid'] = identity['email']
+                            else:
+                                identity['uid'] = get_uid_from_email(
+                                    identity['email'], all_sas_dictionary)
+                            if identity['uid'] != 'gcp_owned':
+                                identity_policy = get_policy_for_identity(
+                                    identity,
+                                    iam_policy=iam_policy,
+                                    binding=binding,
+                                    org_id=None)
+                                # print(identity_policy)
+                                if identity['email'] in output_dict:
+                                    # print(output_dict)
+                                    output_dict[
+                                        identity['email']]['Entitlement'].append(
+                                            identity_policy['Entitlement'][0])
+                                else:
+                                    output_dict[identity['email']] = identity_policy
 
     # print (json.dumps(output_dict, indent=2, default=str))
     return output_dict
