@@ -23,7 +23,7 @@ def get_all_sas(org_id):
     """
     scope = f"organizations/{org_id}"
     asset_types = ['iam.googleapis.com/ServiceAccount']
-    query = "NOT name:(tf)"
+    query = "NOT name:(sandbox OR nonprod)"
     client = asset_v1.AssetServiceClient()
     try:
         response = client.search_all_resources(request={
@@ -264,8 +264,8 @@ def get_policy_for_identity(identity_info,
             ## Skip the "Policy Resource"
             if rsc_type != "Policy":
                 if identity_info['email'] in principal_policy:
-                    principal_policy[identity_info['email']]["Entitlement"].append(
-                        entitlement)
+                    principal_policy[identity_info['email']][
+                        "Entitlement"].append(entitlement)
                 else:
                     principal_policy[identity_info['email']] = {
                         "First_Name": identity_info['first_name'],
@@ -337,11 +337,14 @@ def parse_assets_output(all_iam_policies_dictionary,
                     for member in binding['members']:
                         # print(member)
                         identity = get_identity_info(member)
-                        if identity['sa_type'] == 'user' and gcp_org_id is not None:
+                        if identity[
+                                'sa_type'] == 'user' and gcp_org_id is not None:
                             identity['uid'] = identity['email']
                             if identity['email'] not in output_dict:
                                 identity_policy = get_policy_for_identity(
-                                    identity, iam_policy=None, org_id=gcp_org_id)
+                                    identity,
+                                    iam_policy=None,
+                                    org_id=gcp_org_id)
                                 # print(identity_policy)
                                 output_dict[identity['email']] = identity_policy
 
@@ -360,11 +363,12 @@ def parse_assets_output(all_iam_policies_dictionary,
                                 # print(identity_policy)
                                 if identity['email'] in output_dict:
                                     # print(output_dict)
-                                    output_dict[
-                                        identity['email']]['Entitlement'].append(
+                                    output_dict[identity['email']][
+                                        'Entitlement'].append(
                                             identity_policy['Entitlement'][0])
                                 else:
-                                    output_dict[identity['email']] = identity_policy
+                                    output_dict[
+                                        identity['email']] = identity_policy
 
     # print (json.dumps(output_dict, indent=2, default=str))
     return output_dict
