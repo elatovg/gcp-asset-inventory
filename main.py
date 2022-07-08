@@ -331,7 +331,7 @@ def parse_assets_output(all_iam_policies_dictionary,
     # ignored_sa_accounts = set(('deleted'))
     for iam_policy in all_iam_policies_dictionary:
         # Skip the Policy Resource type
-        if iam_policy['assetType'] != "orgpolicy.googleapis.com/Policy":
+        if iam_policy['asset_type'] != "orgpolicy.googleapis.com/Policy":
             if iam_policy['policy']['bindings']:
                 for binding in iam_policy['policy']['bindings']:
                     for member in binding['members']:
